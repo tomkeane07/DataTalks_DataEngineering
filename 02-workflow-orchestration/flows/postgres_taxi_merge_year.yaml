@@ -1,0 +1,80 @@
+id: postgres_taxi_type_full_year
+namespace: zoomcamp
+description: |
+  The CSV Data used in the course: https://github.com/DataTalksClub/nyc-tlc-data/releases
+
+inputs:
+  - id: taxi
+    type: SELECT
+    displayName: Select taxi type
+    values: [yellow, green]
+    defaults: yellow
+
+  - id: year
+    type: SELECT
+    displayName: Select year
+    values: ["2019", "2020", "2021"]
+    defaults: "2020"
+
+variables:
+  # Uncomment all months for completeness
+  months: ["01", "02"] #, "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+  file: "{{inputs.taxi}}_tripdata_{{inputs.year}}.csv"
+  staging_table: "public.{{inputs.taxi}}_tripdata_staging"
+  table: "public.{{inputs.taxi}}_tripdata"
+  data: "{{outputs.extract.outputFiles[vars.file]}}"
+
+tasks:
+  - id: set_label
+    type: io.kestra.plugin.core.execution.Labels
+    labels:
+      file: "{{render(vars.file)}}"
+      taxi: "{{inputs.taxi}}"
+
+  - id: extract
+    type: io.kestra.plugin.scripts.shell.Commands
+    outputFiles:
+      - "{{vars.file}}"
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - |
+        set -e
+        OUTPUT_DIR="${KESRA_OUTPUT_DIR:-.}"
+        MERGED_FILE="${OUTPUT_DIR}/{{render(vars.file)}}"
+        rm -f "$MERGED_FILE"
+        # Download and decompress each month's file
+        for m in {{vars.months | join(' ')}}; do
+          wget -qO- https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{{inputs.taxi}}/{{inputs.taxi}}_tripdata_{{inputs.year}}-${m}.csv.gz | gunzip > tmp_${m}.csv
+        done
+        # Extract header from the first file and write to merged file
+        head -n 1 tmp_01.csv > "$MERGED_FILE"
+        # Append all data (skip header for all months)
+        for m in {{vars.months | join(' ')}}; do
+          tail -n +2 tmp_${m}.csv >> "$MERGED_FILE"
+          rm -f tmp_${m}.csv
+        done
+        echo "Taxi data merged to file: $MERGED_FILE"
+        ls -la "${MERGED_FILE}"
+        stat --format="%s" "${MERGED_FILE}"
+
+  - id: count_rows
+    type: io.kestra.plugin.scripts.shell.Commands
+    commands:
+      - |
+        echo "This answers question 3."
+        set -e
+        FILE="{{outputs.extract.outputFiles[render(vars.file)]}}"
+        ROWS=$(($(wc -l < "$FILE") - 1))
+        echo "Number of rows in $FILE (excluding header): $ROWS"
+
+  - id: purge_files
+    type: io.kestra.plugin.core.storage.PurgeCurrentExecutionFiles
+    description: This will remove output files. If you'd like to explore Kestra outputs, disable it.
+
+pluginDefaults:
+  - type: io.kestra.plugin.jdbc.postgresql
+    values:
+      url: jdbc:postgresql://pgdatabase:5432/ny_taxi
+      username: root
+      password: root
