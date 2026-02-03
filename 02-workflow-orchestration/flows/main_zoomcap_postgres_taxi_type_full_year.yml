@@ -20,7 +20,7 @@ inputs:
 
 variables:
   # Uncomment all months for completeness
-  months: ["01", "02"] #, "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+  months: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
   file: "{{inputs.taxi}}_tripdata_{{inputs.year}}.csv"
   staging_table: "public.{{inputs.taxi}}_tripdata_staging"
   table: "public.{{inputs.taxi}}_tripdata"
