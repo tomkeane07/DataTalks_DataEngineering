@@ -15,6 +15,7 @@ data/*.csv
 data/*.parquet
 data/*.db
 data/*.sqlite
+notebooks/data/
 
 # Ignore Docker and devcontainer environment files
 .devcontainer/.env

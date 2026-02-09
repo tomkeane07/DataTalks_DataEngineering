@@ -1,0 +1,8 @@
+jupyter
+pandas
+fastparquet
+sqlalchemy
+psycopg2-binary
+python-dotenv
+dlt[bigquery,gs,duckdb]
+google-cloud-storage
